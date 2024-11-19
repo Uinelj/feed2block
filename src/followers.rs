@@ -3,14 +3,16 @@
 use async_stream::stream;
 use atrium_api::{
     app::bsky::{actor::defs::ProfileViewData, graph::get_followers},
+    client::Service,
     types::{string::AtIdentifier, Object},
+    xrpc::XrpcClient,
 };
 use bsky_sdk::BskyAgent;
 use futures_core::Stream;
 use ipld_core::ipld::Ipld;
 
-pub async fn from_followers(
-    agent: &BskyAgent,
+pub async fn from_followers<T: XrpcClient + Send + Sync>(
+    agent: &BskyAgent<T>,
     actor: AtIdentifier,
 ) -> impl Stream<Item = Object<ProfileViewData>> + '_ {
     let get_batch = |actor: AtIdentifier, cursor: Option<_>| async {
