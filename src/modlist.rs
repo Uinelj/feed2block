@@ -3,8 +3,7 @@ use std::error::Error;
 use tracing::info;
 
 use atrium_api::{
-    app::bsky::{actor::put_preferences::Input, graph::listitem},
-    client::Service,
+    app::bsky::graph::listitem,
     types::string::{Datetime, Did},
     xrpc::XrpcClient,
 };
@@ -19,6 +18,7 @@ impl ModList {
         Self(list)
     }
 
+    /// add did to modlist
     pub async fn add<T: XrpcClient + Send + Sync>(
         &self,
         agent: &BskyAgent<T>,
@@ -37,6 +37,7 @@ impl ModList {
         Ok(())
     }
 
+    /// Consume a stream of dids, adding each of them into the modlist
     pub async fn add_stream<T: XrpcClient + Send + Sync>(
         &self,
         agent: &BskyAgent<T>,
@@ -44,7 +45,7 @@ impl ModList {
     ) -> Result<(), Box<dyn Error>> {
         pin_mut!(dids);
         while let Some(did) = dids.next().await {
-            // info!(msg = "adding to list", list = self.0, did = ?did);
+            info!(msg = "adding to list", list = self.0, did = ?did);
             self.add(agent, did).await?;
         }
 

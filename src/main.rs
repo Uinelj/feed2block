@@ -1,13 +1,6 @@
-use std::{future::Future, path::PathBuf, time::Duration};
+use std::path::PathBuf;
 
-use atrium_api::{
-    types::string::{AtIdentifier, Handle},
-    xrpc::{
-        http::{Request, Response},
-        HttpClient, XrpcClient,
-    },
-};
-use atrium_xrpc_client::reqwest::{ReqwestClient, ReqwestClientBuilder};
+use atrium_api::types::string::{AtIdentifier, Handle};
 use bsky_sdk::{
     agent::config::{Config, FileStore},
     BskyAgent,
@@ -17,12 +10,13 @@ use feed_generator::from_feed;
 use followers::from_followers;
 use futures_util::stream::StreamExt;
 use modlist::ModList;
-use tower::limit::{rate::Rate, RateLimit};
-use tracing::{info, warn};
+use ratelimit::RateLimited;
+use tracing::info;
 
 mod feed_generator;
 mod followers;
 mod modlist;
+mod ratelimit;
 mod state;
 
 /// Generate config from auth.
@@ -34,30 +28,6 @@ struct Args {
     output: PathBuf,
 }
 
-struct RateLimitBskyClient(RateLimit<ReqwestClient>);
-
-impl HttpClient for RateLimitBskyClient {
-    #[doc = " Send an HTTP request and return the response."]
-    fn send_http(
-        &self,
-        request: Request<Vec<u8>>,
-    ) -> impl Future<
-        Output = core::result::Result<
-            Response<Vec<u8>>,
-            Box<dyn std::error::Error + Send + Sync + 'static>,
-        >,
-    > + Send {
-        self.0.get_ref().send_http(request)
-    }
-}
-
-impl XrpcClient for RateLimitBskyClient {
-    #[doc = " The base URI of the XRPC server."]
-    fn base_uri(&self) -> String {
-        self.0.get_ref().base_uri()
-    }
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // install global collector configured based on RUST_LOG env var.
@@ -65,10 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     // client
-    let client = RateLimitBskyClient(RateLimit::new(
-        ReqwestClient::new("https://bsky.social"),
-        Rate::new(1, Duration::from_secs(1)),
-    ));
+    let client = RateLimited::default();
 
     let agent = BskyAgent::builder()
         .config(Config::load(&FileStore::new(args.output)).await?)

@@ -3,13 +3,13 @@
 use async_stream::stream;
 use atrium_api::{
     app::bsky::{actor::defs::ProfileViewData, graph::get_followers},
-    client::Service,
-    types::{string::AtIdentifier, Object},
+    types::{string::AtIdentifier, LimitedNonZeroU8, Object},
     xrpc::XrpcClient,
 };
 use bsky_sdk::BskyAgent;
 use futures_core::Stream;
 use ipld_core::ipld::Ipld;
+use tracing::info;
 
 pub async fn from_followers<T: XrpcClient + Send + Sync>(
     agent: &BskyAgent<T>,
@@ -25,7 +25,7 @@ pub async fn from_followers<T: XrpcClient + Send + Sync>(
                 data: get_followers::ParametersData {
                     actor,
                     cursor,
-                    limit: None,
+                    limit: Some(LimitedNonZeroU8::MAX),
                 },
                 extra_data: Ipld::Null,
             })
@@ -34,7 +34,8 @@ pub async fn from_followers<T: XrpcClient + Send + Sync>(
 
     stream! {
         let mut cursor = None;
-        loop {
+        for i in 0.. {
+            info!(msg="getting batch", nb=i);
             let batch = get_batch(actor.clone(), cursor).await.unwrap();
             cursor = batch.cursor.clone();
             for follower in batch.data.followers {

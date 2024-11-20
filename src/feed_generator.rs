@@ -6,7 +6,6 @@ use std::error::Error;
 
 use atrium_api::{
     app::bsky::{actor::defs::ProfileViewBasicData, feed::get_feed},
-    client::Service,
     xrpc::XrpcClient,
 };
 use bsky_sdk::BskyAgent;
