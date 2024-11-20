@@ -10,10 +10,13 @@ use feed_generator::from_feed;
 use followers::from_followers;
 use futures_util::stream::StreamExt;
 use modlist::ModList;
+use ratelimit::RateLimited;
+use tracing::info;
 
 mod feed_generator;
 mod followers;
 mod modlist;
+mod ratelimit;
 mod state;
 
 /// Generate config from auth.
@@ -24,11 +27,19 @@ struct Args {
     #[arg(short, long, default_value = "config.json")]
     output: PathBuf,
 }
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // install global collector configured based on RUST_LOG env var.
+    tracing_subscriber::fmt::init();
     let args = Args::parse();
+
+    // client
+    let client = RateLimited::default();
+
     let agent = BskyAgent::builder()
         .config(Config::load(&FileStore::new(args.output)).await?)
+        .client(client)
         .build()
         .await?;
 
@@ -38,26 +49,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
 
-    let list = ModList::new(
+    let genders = ModList::new(
         "at://did:plc:hhj2b7rqtaffsbd7a52dhf4j/app.bsky.graph.list/3lbckk67rxd2r".into(),
     );
 
-    let debuglist = ModList::new(
-        "at://did:plc:hhj2b7rqtaffsbd7a52dhf4j/app.bsky.graph.list/3lbafrng3b32u".into(),
-    );
-
+    info!(msg = "adding to gender blocklist");
     for author in authors {
-        println!("banning {:?}", &author.handle);
-        list.add(&agent, author.did).await?;
+        genders.add(&agent, author.did).await?;
     }
 
+    let cnews = ModList::new(
+        "at://did:plc:hhj2b7rqtaffsbd7a52dhf4j/app.bsky.graph.list/3lbd7snb23r2y".into(),
+    );
     let followers_stream = from_followers(
         &agent,
         AtIdentifier::Handle(Handle::new("cnews.bsky.social".into()).unwrap()),
     )
     .await;
 
-    debuglist
+    info!(msg = "adding to cnews blocklist");
+    cnews
         .add_stream(&agent, followers_stream.map(|o| o.did.clone()))
         .await?;
     Ok(())
