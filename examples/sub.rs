@@ -1,7 +1,5 @@
 use std::error::Error;
 
-use atrium_api::com::atproto::sync::subscribe_repos::NSID;
-use atrium_streams_client::WssClient;
 use futures_util::StreamExt;
 use tokio_tungstenite::connect_async;
 
