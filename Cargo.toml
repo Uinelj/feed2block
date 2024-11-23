@@ -15,6 +15,14 @@ path = "src/auth.rs"
 name = "sub2"
 path = "src/sub2.rs"
 
+[[bin]]
+name = "account_watcher"
+path = "src/bin/account_watcher.rs"
+
+[lib]
+name = "feed2block"
+path = "src/lib.rs"
+
 [dependencies]
 async-stream = "0.3.6"
 atrium-api = "0.24.8"

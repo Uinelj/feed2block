@@ -16,9 +16,15 @@ pub enum Event {
 
 #[derive(Debug)]
 pub struct Follow {
-    from: AtIdentifier,
-    to: AtIdentifier,
+    pub from: Did,
+    to: Did,
     event: Event,
+}
+
+impl Follow {
+    pub fn from(&self) -> &str {
+        self.from.as_ref()
+    }
 }
 
 impl TryFrom<serde_json::Value> for Follow {
@@ -53,11 +59,7 @@ impl TryFrom<serde_json::Value> for Follow {
             _ => panic!("unsupported event"),
         };
 
-        Ok(Self {
-            from: AtIdentifier::Did(from),
-            to: AtIdentifier::Did(to),
-            event,
-        })
+        Ok(Self { from, to, event })
     }
 }
 
