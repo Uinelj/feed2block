@@ -18,6 +18,7 @@ mod followers;
 mod modlist;
 mod ratelimit;
 mod state;
+pub mod subwatch;
 
 /// Generate config from auth.
 #[derive(Parser, Debug)]

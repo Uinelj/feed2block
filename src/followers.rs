@@ -38,6 +38,7 @@ pub async fn from_followers<T: XrpcClient + Send + Sync>(
             info!(msg="getting batch", nb=i);
             let batch = get_batch(actor.clone(), cursor).await.unwrap();
             cursor = batch.cursor.clone();
+            info!(msg="got followers", nb=&batch.data.followers.len());
             for follower in batch.data.followers {
                 yield follower;
             }

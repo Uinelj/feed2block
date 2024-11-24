@@ -9,3 +9,17 @@ TODO:
 TODO:
 - Avoid re-adding everyone
 - structure stuff
+
+Needed features:
+- get a modlist
+- get followers of an account
+- get a stream of follow events of an account
+
+Things we'd like to do:
+
+- monitor gender feed, send to gender modlist
+- monitor <account> followers, send to account modlist
+
+Bonus?
+
+- It'd be nice to tag people that follow account X
