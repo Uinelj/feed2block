@@ -23,3 +23,11 @@ Things we'd like to do:
 Bonus?
 
 - It'd be nice to tag people that follow account X
+
+Backfilling/wide update:
+
+- get modlist in a HashMap/bloom (history)
+- get current followers into another hashmap/bloom (current)
+- ignore those in both (do nothing)
+- add those in current not in history
+- remove those in history not in current (redemption arc)

@@ -3,7 +3,6 @@ use std::error::Error;
 use atrium_api::types::string::{AtIdentifier, Did};
 use futures_util::StreamExt;
 use tokio_tungstenite::connect_async;
-use tracing::info;
 
 #[derive(Debug)]
 enum Event {
@@ -26,15 +25,13 @@ impl TryFrom<serde_json::Value> for Follow {
             .get("commit")
             .and_then(|v| v.get("record"))
             .and_then(|v| v.get("subject"))
-            .and_then(|v| v.as_str())
-            .and_then(|v| Some(Did::new(v.into())))
+            .and_then(|v| v.as_str()).map(|v| Did::new(v.into()))
             .unwrap()
             .unwrap();
 
         let from = value
             .get("did")
-            .and_then(|v| v.as_str())
-            .and_then(|v| Some(Did::new(v.into())))
+            .and_then(|v| v.as_str()).map(|v| Did::new(v.into()))
             .unwrap()
             .unwrap();
 
@@ -64,9 +61,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // louis' did:
     let did = "did:plc:p7gxyfr5vii5ntpwo7f6dhe2";
 
-    let (mut stream, _) = connect_async(format!(
-        r#"wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.graph.follow&wantedDids=did:plc:hhj2b7rqtaffsbd7a52dhf4j"# // r#"wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.graph.follow"#,
-    ))
+    let (mut stream, _) = connect_async(r#"wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.graph.follow&wantedDids=did:plc:hhj2b7rqtaffsbd7a52dhf4j"#.to_string())
     .await?;
     // ""
     while let Some(item) = stream.next().await {

@@ -1,8 +1,6 @@
-use std::error::Error;
-
-use atrium_api::types::string::{AtIdentifier, Did};
+use atrium_api::types::string::Did;
 use futures_core::Stream;
-use futures_util::{future, StreamExt, TryStreamExt};
+use futures_util::StreamExt;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use tracing::info;
@@ -36,14 +34,14 @@ impl TryFrom<serde_json::Value> for Follow {
             .and_then(|v| v.get("record"))
             .and_then(|v| v.get("subject"))
             .and_then(|v| v.as_str())
-            .and_then(|v| Some(Did::new(v.into())))
+            .map(|v| Did::new(v.into()))
             .unwrap()
             .unwrap();
 
         let from = value
             .get("did")
             .and_then(|v| v.as_str())
-            .and_then(|v| Some(Did::new(v.into())))
+            .map(|v| Did::new(v.into()))
             .unwrap()
             .unwrap();
 
@@ -76,7 +74,7 @@ impl SubWatcher {
         jetstream
             .query_pairs_mut()
             .append_pair("wantedCollections", "app.bsky.graph.follow")
-            .append_pair("wanteddids", watch_identifier.as_str())
+            .append_pair("wantedDids", watch_identifier.as_str())
             .finish();
         // let jetstream2 = "wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.graph.follow";
 
