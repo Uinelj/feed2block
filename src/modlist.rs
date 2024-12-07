@@ -127,7 +127,6 @@ mod tests {
         config::{Config, FileStore},
         BskyAgentBuilder,
     };
-    use futures_util::{pin_mut, StreamExt};
 
     use crate::{modlist::ModList, ratelimit::RateLimited};
 
@@ -145,11 +144,7 @@ mod tests {
             "at://did:plc:hhj2b7rqtaffsbd7a52dhf4j/app.bsky.graph.list/3lbd7snb23r2y".into(),
         );
 
-        let stream = ModList::get_members(modlist.0, &agent, None).await;
-        pin_mut!(stream);
-        while let Some(x) = stream.next().await {
-            println!("{x:#?}");
-            panic!();
-        }
+        let last_member = ModList::get_last_member(modlist.0, &agent).await;
+        println!("{last_member:#?}");
     }
 }
