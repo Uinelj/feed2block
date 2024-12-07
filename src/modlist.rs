@@ -1,4 +1,5 @@
 use futures_util::{pin_mut, stream::StreamExt};
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 use tracing::warn;
 
@@ -11,6 +12,7 @@ use bsky_sdk::BskyAgent;
 use futures_core::Stream;
 use ipld_core::ipld::Ipld;
 
+#[derive(Serialize, Deserialize)]
 pub struct ModList(String);
 
 impl ModList {
