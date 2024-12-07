@@ -5,7 +5,10 @@ use std::error::Error;
 use tracing::{info, warn};
 
 use atrium_api::{
-    app::bsky::graph::{get_list, listitem},
+    app::bsky::{
+        actor::defs::ProfileViewData,
+        graph::{get_list, listitem},
+    },
     types::string::{Datetime, Did},
     xrpc::XrpcClient,
 };
@@ -70,7 +73,7 @@ impl ModList {
         list: String,
         agent: &BskyAgent<T>,
         cursor: Option<String>,
-    ) -> impl Stream<Item = Did> + '_ {
+    ) -> impl Stream<Item = ProfileViewData> + '_ {
         let get_batch = |list: String, cursor: Option<String>| async {
             agent
                 .api
@@ -98,7 +101,7 @@ impl ModList {
                 cursor = batch.cursor.clone();
                 info!(msg="got members", nb=&batch.data.items.len());
                 for member in batch.data.items {
-                    yield member.data.subject.data.did;
+                    yield member.data.subject.data;
                 }
 
                 if cursor.is_none() {
@@ -106,6 +109,15 @@ impl ModList {
                 }
             }
         }
+    }
+
+    pub async fn get_last_member<T: XrpcClient + Send + Sync>(
+        list: String,
+        agent: &BskyAgent<T>,
+    ) -> Option<ProfileViewData> {
+        let stream = Self::get_members(list, agent, None).await;
+        pin_mut!(stream);
+        stream.next().await
     }
 }
 
@@ -136,7 +148,8 @@ mod tests {
         let stream = ModList::get_members(modlist.0, &agent, None).await;
         pin_mut!(stream);
         while let Some(x) = stream.next().await {
-            println!("{x:?}");
+            println!("{x:#?}");
+            panic!();
         }
     }
 }
