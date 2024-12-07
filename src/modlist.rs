@@ -16,7 +16,7 @@ use bsky_sdk::BskyAgent;
 use futures_core::Stream;
 use ipld_core::ipld::Ipld;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ModList(String);
 
 /// TODO: batch add

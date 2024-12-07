@@ -12,7 +12,7 @@ pub type States = HashMap<Did, State>;
 /// last timestamp delivered by the jetstream
 ///
 /// Those can be approximate since we'll likely won't be writing ts+cursor at each update.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct State {
     pub modlist: ModList,
     cursor: Option<String>,
