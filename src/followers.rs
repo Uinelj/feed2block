@@ -14,7 +14,8 @@ use tracing::info;
 pub async fn from_followers<T: XrpcClient + Send + Sync>(
     agent: &BskyAgent<T>,
     actor: AtIdentifier,
-) -> impl Stream<Item = Object<ProfileViewData>> + '_ {
+    cursor: Option<String>,
+) -> impl Stream<Item = (Object<ProfileViewData>, Option<String>)> + '_ {
     let get_batch = |actor: AtIdentifier, cursor: Option<_>| async {
         agent
             .api
@@ -33,14 +34,14 @@ pub async fn from_followers<T: XrpcClient + Send + Sync>(
     };
 
     stream! {
-        let mut cursor = None;
+        let mut cursor = cursor;
         for i in 0.. {
-            info!(msg="getting batch", nb=i);
             let batch = get_batch(actor.clone(), cursor).await.unwrap();
+            info!(msg="getting batch", nb=i, cursor=?batch.cursor);
             cursor = batch.cursor.clone();
             info!(msg="got followers", nb=&batch.data.followers.len());
             for follower in batch.data.followers {
-                yield follower;
+                yield (follower, cursor.clone());
             }
             if cursor.is_none() {
                 break;

@@ -17,6 +17,7 @@ pub struct Follow {
     pub from: Did,
     to: Did,
     event: Event,
+    ts: i64,
 }
 
 impl Follow {
@@ -51,13 +52,23 @@ impl TryFrom<serde_json::Value> for Follow {
             .and_then(|v| v.as_str())
             .expect("missing event");
 
+        let ts = value
+            .get("time_us")
+            .and_then(|v| v.as_i64())
+            .expect("missing ts");
+
         let event = match event {
             "create" => Event::Follow,
             "delete" => Event::Unfollow,
             _ => panic!("unsupported event"),
         };
 
-        Ok(Self { from, to, event })
+        Ok(Self {
+            from,
+            to,
+            event,
+            ts,
+        })
     }
 }
 
@@ -94,7 +105,7 @@ impl SubWatcher {
             async move {
                 let item = item.unwrap();
                 let item: serde_json::Value = serde_json::from_slice(&item.into_data()).unwrap();
-                // info!(item=?item);
+                info!(item=?item);
                 let subject = &item["commit"]["record"]["subject"]
                     .as_str()
                     .unwrap_or("none");

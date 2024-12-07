@@ -1,6 +1,6 @@
 use futures_util::{pin_mut, stream::StreamExt};
 use std::error::Error;
-use tracing::info;
+use tracing::warn;
 
 use atrium_api::{
     app::bsky::graph::listitem,
@@ -41,14 +41,22 @@ impl ModList {
     pub async fn add_stream<T: XrpcClient + Send + Sync>(
         &self,
         agent: &BskyAgent<T>,
-        dids: impl Stream<Item = Did>,
-    ) -> Result<(), Box<dyn Error>> {
+        dids: impl Stream<Item = (Did, Option<String>)>,
+    ) -> Result<Option<String>, Box<dyn Error>> {
         pin_mut!(dids);
-        while let Some(did) = dids.next().await {
-            info!(msg = "adding to list", list = self.0, did = ?did);
+        let mut last_cursor = None;
+        while let Some((did, cursor)) = dids.next().await {
+            if let Some(c) = cursor {
+                last_cursor = Some(c);
+            }
+            // info!(msg = "adding to list", list = self.0, did = ?did);
             self.add(agent, did).await?;
         }
 
-        Ok(())
+        if last_cursor.is_none() {
+            warn!(msg = "no last cursor found!");
+        }
+
+        Ok(last_cursor)
     }
 }
