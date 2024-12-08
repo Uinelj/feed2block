@@ -52,6 +52,7 @@ async fn run_backfill<T: Send + Sync + XrpcClient>(
     agent: &BskyAgent<T>,
     did: &Did,
     did_state: &mut State,
+    last_added: Option<Did>,
 ) -> Result<(), Box<dyn Error>> {
     let last_cursor = match did_state.cursor() {
         Some(c) => {
@@ -63,6 +64,7 @@ async fn run_backfill<T: Send + Sync + XrpcClient>(
             None
         }
     };
+
     let follower_stream = from_followers(
         &agent,
         AtIdentifier::Did(did.clone()),
@@ -73,11 +75,23 @@ async fn run_backfill<T: Send + Sync + XrpcClient>(
 
     pin_mut!(follower_stream);
 
-    info!(msg = "backfilling", start_cursor = last_cursor);
-    let last_cursor = did_state
-        .modlist
-        .add_stream(&agent, follower_stream)
-        .await?;
+    info!(
+        msg = "backfilling",
+        start_cursor = last_cursor,
+        last_added = ?last_added
+    );
+    let last_cursor = if let Some(last_added) = last_added {
+        did_state
+            .modlist
+            .add_stream_shortcircuit(&agent, follower_stream, last_added)
+            .await?
+    } else {
+        did_state
+            .modlist
+            .add_stream(&agent, follower_stream)
+            .await?
+    };
+
     if let Some(c) = last_cursor {
         info!(msg = "writing last cursor", cursor = c);
         did_state.set_cursor(c);
@@ -137,12 +151,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .or_insert(State::new(ModList::new(modlist.clone()), None, None));
 
     if backfill {
-        run_backfill(&agent, &did, did_state).await?;
+        // get last added to modlist
+        let last_added = ModList::get_last_member(modlist.clone(), &agent)
+            .await
+            .map(|f| f.did);
+        info!(msg = "got last added", did = ?last_added);
+        run_backfill(&agent, &did, did_state, last_added).await?;
         info!(msg = "backfilling done, writing state", state_path = ?cursor);
 
         let w = OpenOptions::new()
             .write(true)
-            // .truncate(true)
+            .truncate(true)
             .create(true)
             .open(&cursor)?;
 
@@ -181,7 +200,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     match signal::ctrl_c().await {
         Ok(()) => {
             token.cancel();
-            let w = OpenOptions::new().write(true).create(true).open(cursor)?;
+            let w = OpenOptions::new()
+                .write(true)
+                .truncate(true)
+                .create(true)
+                .open(cursor)?;
 
             let states = rx.await?;
             info!(msg = "got states back", "states"=?&states);

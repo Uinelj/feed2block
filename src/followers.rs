@@ -49,3 +49,34 @@ pub async fn from_followers<T: XrpcClient + Send + Sync>(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use atrium_api::types::string::{AtIdentifier, Handle};
+    use bsky_sdk::agent::{
+        config::{Config, FileStore},
+        BskyAgentBuilder,
+    };
+    use futures_util::{pin_mut, StreamExt};
+
+    use crate::{followers::from_followers, ratelimit::RateLimited};
+
+    #[tokio::test]
+    async fn test_last_follow() {
+        let client = RateLimited::default();
+        let agent = BskyAgentBuilder::default()
+            .config(Config::load(&FileStore::new("config.json")).await.unwrap())
+            .client(client)
+            .build()
+            .await
+            .unwrap();
+
+        let actor = AtIdentifier::Handle(Handle::new("cnews.bsky.social".into()).unwrap());
+        let mut followers = from_followers(&agent, actor, None).await.take(5);
+        pin_mut!(followers);
+
+        while let Some(x) = followers.next().await {
+            dbg!(&x.0.handle);
+        }
+    }
+}

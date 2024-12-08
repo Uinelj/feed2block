@@ -1,5 +1,5 @@
 use async_stream::stream;
-use futures_util::{pin_mut, stream::StreamExt};
+use futures_util::{pin_mut, stream::StreamExt, TryFutureExt};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use tracing::{info, warn};
@@ -67,6 +67,30 @@ impl ModList {
         Ok(last_cursor)
     }
 
+    /// Consume a stream of dids, adding each of them into the modlist
+    /// Stops if given did is encountered.
+    pub async fn add_stream_shortcircuit<T: XrpcClient + Send + Sync>(
+        &self,
+        agent: &BskyAgent<T>,
+        dids: impl Stream<Item = (Did, Option<String>)>,
+        stop_at: Did,
+    ) -> Result<Option<String>, Box<dyn Error>> {
+        pin_mut!(dids);
+        let mut last_cursor = None;
+        while let Some((did, cursor)) = dids.next().await {
+            if did == stop_at {
+                info!(msg = "early stopping backfill", stop_at = ?stop_at);
+                break;
+            }
+            if let Some(c) = cursor {
+                last_cursor = Some(c);
+            }
+            // info!(msg = "adding to list", list = self.0, did = ?did);
+            self.add(agent, did).await?;
+        }
+        Ok(last_cursor)
+    }
+
     /// gets members of provided list.
     /// set cursor to a cursor if you want to skip a part of the list.
     pub async fn get_members<T: XrpcClient + Send + Sync>(
@@ -119,6 +143,31 @@ impl ModList {
         pin_mut!(stream);
         stream.next().await
     }
+
+    pub async fn get_nb_members<T: XrpcClient + Send + Sync>(
+        list: String,
+        agent: &BskyAgent<T>,
+    ) -> Option<usize> {
+        let nb = agent
+            .api
+            .app
+            .bsky
+            .graph
+            .get_list(get_list::Parameters {
+                data: get_list::ParametersData {
+                    cursor: None,
+                    limit: None,
+                    list,
+                },
+                extra_data: Ipld::Null,
+            })
+            .await
+            .unwrap()
+            .list
+            .list_item_count;
+
+        nb
+    }
 }
 
 #[cfg(test)]
@@ -146,5 +195,22 @@ mod tests {
 
         let last_member = ModList::get_last_member(modlist.0, &agent).await;
         println!("{last_member:#?}");
+    }
+
+    #[tokio::test]
+    async fn test_nb_followers() {
+        let client = RateLimited::default();
+        let agent = BskyAgentBuilder::default()
+            .config(Config::load(&FileStore::new("config.json")).await.unwrap())
+            .client(client)
+            .build()
+            .await
+            .unwrap();
+
+        let modlist = ModList::new(
+            "at://did:plc:hhj2b7rqtaffsbd7a52dhf4j/app.bsky.graph.list/3lbd7snb23r2y".into(),
+        );
+        let nb_members = ModList::get_nb_members(modlist.0, &agent).await;
+        println!("{nb_members:?}");
     }
 }
